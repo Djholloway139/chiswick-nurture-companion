@@ -1,0 +1,1 @@
+Clone https://github.com/Djholloway139/chiswick-nurture-companion.git into my Documents folder as chiswick-nurture-companion, without replacing anything already there; then tell me how to open that folder in Claude Code and say set me up. Never ask for a key in chat.

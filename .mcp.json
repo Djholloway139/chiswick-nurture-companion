@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "nurture": {
+      "type": "http",
+      "url": "https://app.nurtureoutreach.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${NURTURE_API_KEY}"
+      }
+    }
+  }
+}

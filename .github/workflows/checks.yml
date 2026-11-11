@@ -1,0 +1,36 @@
+name: checks
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Match a default Git for Windows install (line-ending conversion on)
+        if: runner.os == 'Windows'
+        run: git config --global core.autocrlf true
+      - uses: actions/checkout@v4
+      - name: Repo tests
+        run: bash tests/run.sh
+      - name: Doctor with no key (expects MISSING, exit 0)
+        run: bash scripts/doctor.sh
+      - name: Doctor never prints the key
+        env:
+          NURTURE_API_KEY: ci-dummy-value-not-a-key
+        run: |
+          out="$(bash scripts/doctor.sh 2>&1)"
+          printf '%s\n' "$out"
+          if printf '%s' "$out" | grep -q 'ci-dummy-value-not-a-key'; then echo "doctor printed the key"; exit 1; fi

@@ -1,0 +1,8 @@
+my-notes/
+downloads/
+.DS_Store
+Thumbs.db
+.env
+.env.*
+.claude/settings.local.json
+tests/private-words.txt
