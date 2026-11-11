@@ -363,6 +363,8 @@ output=$(doctor)
 check 'doctor recognises an exact main checkout and origin' has "$output" 'OK Checkout: companion on main with the expected origin'
 check 'doctor confirms notes are ignored and untracked' has "$output" 'OK my-notes/: ignored and untracked'
 check 'doctor confirms downloads are ignored and untracked' has "$output" 'OK downloads/: ignored and untracked'
+# Git Bash without symlink support copies instead of linking; refresh the copy so it carries the origin set above.
+if [ ! -L "$scratch/checkout-alias" ]; then rm -rf "$scratch/checkout-alias" && ln -s "$scratch/reader" "$scratch/checkout-alias" || exit 1; fi
 output=$(PATH="$scratch/bin:$PATH" bash "$scratch/checkout-alias/scripts/doctor.sh")
 check 'doctor accepts a symlink-spelled checkout root' has "$output" 'OK Checkout: companion on main with the expected origin'
 mkdir -p "$scratch/reader/subfolder/scripts" "$scratch/non-git/scripts" || exit 1
