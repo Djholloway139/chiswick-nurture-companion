@@ -2,8 +2,10 @@
 # Sourced by the doctor. Never execute arbitrary host/flag inputs.
 set +x
 set -o pipefail
+. "$root/scripts/key.sh"
 
 transport_key_ok() {
+  nurture_key_load "$root"
   [ -n "${NURTURE_API_KEY:-}" ] || return 1
   case "$NURTURE_API_KEY" in *[![:graph:]]*) return 1 ;; esac
 }

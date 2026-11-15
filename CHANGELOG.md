@@ -1,5 +1,13 @@
 # Changes
 
+## 1.1.0
+
+- Install is now one message: paste the repo link and say install. The README holds the steps for Claude.
+- Bela pastes his key into a private pop-up box; it is stored in the ignored .env in the companion folder. No shell profile or environment variables.
+- The Nurture connection reads the key through a headers helper, so a new session connects without restarting the app.
+- Claude in Chrome set-up moved out of install; the companion walks Bela through it the first time a job needs the browser.
+- Removed the separate Mac and Windows guides and the install sentence.
+
 ## 1.0.0
 
 - Added commands for every agreed job, with a browser fallback for missing capabilities.

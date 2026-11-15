@@ -10,4 +10,7 @@ bash scripts/sync-skills.sh || {
   printf 'Codex skills unavailable in this folder. Stop and follow install/codex.md.\n' >&2
   exit 1
 }
+# Codex reads the key from the environment; take it from .env if needed.
+. scripts/key.sh
+nurture_key_load "$root"
 exec codex "$@"

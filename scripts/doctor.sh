@@ -30,7 +30,7 @@ main() {
   done
   state=unknown; note='access and identity not verified; use /setup live discovery'
   if ! transport_key_ok; then
-    printf 'MISSING NURTURE_API_KEY: missing or unsafe; enter your own key outside chat, then restart\n'
+    printf 'MISSING NURTURE_API_KEY: missing or unsafe; run bash scripts/save-key.sh so Bela can paste it into the pop-up box\n'
   elif ! command -v curl >/dev/null 2>&1; then
     printf 'MISSING curl: ask IT to restore the standard shell tools\n'
   else
