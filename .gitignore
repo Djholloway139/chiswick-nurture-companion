@@ -6,3 +6,4 @@ Thumbs.db
 .env.*
 .claude/settings.local.json
 tests/private-words.txt
+.agents/skills/

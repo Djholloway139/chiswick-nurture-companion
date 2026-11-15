@@ -1,79 +1,71 @@
 #!/usr/bin/env bash
-# Read-only checks. Never write credentials or print a response body.
+# Live discovery only. Tool presence never proves this key's effective access.
 set +x
+set -o pipefail
+umask 077
 main() {
-  local root os version major minor patch prefix branch origin reply code body verdict
-  root=$(cd "$(dirname "$0")/.." 2>/dev/null && pwd -P)
-  os=$(uname -s 2>/dev/null)
-  case "$os" in
-    Darwin) printf 'OK OS: macOS\n' ;;
-    MINGW*|MSYS*) printf 'OK OS: Windows Git Bash\n' ;;
-    *) printf 'UNKNOWN OS: use macOS or Git Bash from Git for Windows\n' ;;
-  esac
-  if command -v git >/dev/null 2>&1; then
-    printf 'OK Git: installed\n'
-  else
-    printf 'MISSING Git: install Git for Windows on Windows, or Apple command line tools on Mac; reopen Claude Code\n'
-  fi
+  local root os version prefix branch origin reply code body verdict reason work state note file name
+  root=$(cd "$(dirname "$0")/.." && pwd -P) || return 1
+  . "$root/scripts/transport.sh"
+  os=$(uname -s)
+  case "$os" in Darwin) printf 'OK OS: macOS\n' ;; MINGW*|MSYS*) printf 'OK OS: Windows Git Bash\n' ;; *) printf 'UNKNOWN OS: use macOS or Git Bash\n' ;; esac
   version=$(claude --version 2>/dev/null)
   if [[ "$version" =~ ([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
-    major=${BASH_REMATCH[1]}; minor=${BASH_REMATCH[2]}; patch=${BASH_REMATCH[3]}
-    printf 'OK Claude Code: %s.%s.%s (version information only)\n' "$major" "$minor" "$patch"
-  else
-    printf 'UNKNOWN Claude Code: version not readable; ask IT to check the installed version\n'
-  fi
+    printf 'OK Claude Code: %s (version information only; verify client features in /setup)\n' "${BASH_REMATCH[0]}"
+  else printf 'UNKNOWN Claude Code: version not readable; ask IT\n'; fi
+  if command -v git >/dev/null 2>&1; then
+    printf 'OK Git: installed\n'
+  else printf 'MISSING Git: install Git for Windows or Mac command line tools\n'; fi
   branch=$(git -C "$root" symbolic-ref --short HEAD 2>/dev/null)
   origin=$(git -C "$root" remote get-url origin 2>/dev/null)
   if prefix=$(git -C "$root" rev-parse --show-prefix 2>/dev/null) && [ -z "$prefix" ] &&
-    [ "$branch" = main ] && [ "$origin" = 'https://github.com/Djholloway139/chiswick-nurture-companion.git' ]; then
-    printf 'OK Checkout: companion on main with the expected origin\n'
-  else
-    printf 'MISSING Checkout: open the chiswick-nurture-companion folder cloned from https://github.com/Djholloway139/chiswick-nurture-companion.git on main; ask your administrator if it differs\n'
-  fi
-  for path in my-notes downloads; do
-    if git -C "$root" check-ignore -q --no-index "$path/doctor-check" 2>/dev/null &&
-      [ -z "$(git -C "$root" ls-files -- "$path" 2>/dev/null)" ]; then
-      printf 'OK %s/: ignored and untracked\n' "$path"
-    else
-      printf 'MISSING %s/: personal folder is not protected; stop and ask your administrator to restore the kit before saving files\n' "$path"
-    fi
+     [ "$branch" = main ] && [ "$origin" = 'https://github.com/Djholloway139/chiswick-nurture-companion.git' ]; then
+    printf 'OK Checkout: expected main and origin\n'
+  else printf 'MISSING Checkout: open the companion clone on main; ask Dan if it differs\n'; fi
+  for name in my-notes downloads; do
+    if git -C "$root" check-ignore -q --no-index "$name/doctor-check" 2>/dev/null &&
+       [ -z "$(git -C "$root" ls-files -- "$name" 2>/dev/null)" ]; then
+      printf 'OK %s/: ignored and untracked\n' "$name"
+    else printf 'MISSING %s/: stop before saving files; ask Dan\n' "$name"; fi
   done
-  if [ -z "${NURTURE_API_KEY:-}" ]; then
-    printf 'MISSING NURTURE_API_KEY: add your own key in your user environment settings, never in chat, then fully restart Claude Code\n'
-    printf 'UNKNOWN Nurture key: no key available; finish setup first or use Chrome\n'
-    return 0
+  state=unknown; note='access and identity not verified; use /setup live discovery'
+  if ! transport_key_ok; then
+    printf 'MISSING NURTURE_API_KEY: missing or unsafe; enter your own key outside chat, then restart\n'
+  elif ! command -v curl >/dev/null 2>&1; then
+    printf 'MISSING curl: ask IT to restore the standard shell tools\n'
+  else
+    work=$(mktemp -d "${TMPDIR:-/tmp}/nurture-doctor.XXXXXX") || return 1
+    doctor_work=$work
+    trap 'rm -rf -- "$doctor_work"' EXIT
+    trap 'exit 1' HUP INT TERM
+    printf '%s' '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' > "$work/request.json"
+    reply=$(transport_request discovery "$work/request.json")
+    if [ "$?" -ne 0 ]; then
+      state=offline; note='network or TLS failure; current kit preserved'
+      printf 'UNKNOWN Nurture: %s\n' "$note"
+    else
+      code=${reply##*$'\n'}; body=${reply%$'\n'*}
+      if [ "$code" = 200 ] && verdict=$(printf '%s' "$body" | LC_ALL=C awk -v mode=discovery -f "$root/scripts/json.awk" 2>/dev/null); then
+        printf 'OK Discovery: live schemas received (%s); this does not verify key access\n' "$verdict"
+        note='discovered; /setup must match live descriptions and verify access'
+      else
+        reason=$(transport_error "$body") || reason=''
+        [ -z "$reason" ] || printf 'UNKNOWN Nurture response: %s\n' "$reason"
+        case "$code" in
+          401|403) state='not allowed for this key'; note='discovery refused; verify browser separately' ;;
+          *) note='reply unverified; do not infer access or missing capabilities' ;;
+        esac
+        printf 'UNKNOWN Discovery: %s\n' "$note"
+      fi
+    fi
   fi
-  printf 'OK NURTURE_API_KEY: present (value hidden)\n'
-  if ! command -v curl >/dev/null 2>&1; then
-    printf 'MISSING Nurture key: cannot check without curl; ask IT to restore the standard macOS or Git Bash tools\n'
-    return 0
-  fi
-  case "$NURTURE_API_KEY" in
-    *$'\n'*|*$'\r'*) printf 'MISSING Nurture key: key has a line break; re-enter it yourself in environment settings and restart\n'; return 0 ;;
-  esac
-  reply=$(printf 'Authorization: %s %s\n' 'Bearer' "$NURTURE_API_KEY" |
-    curl --silent --connect-timeout 5 --max-time 8 --max-filesize 2097152 --proto '=https' \
-      --header @- --header 'Content-Type: application/json' --header 'Accept: application/json' \
-      --data '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_tasks","arguments":{"limit":1}}}' \
-      --write-out $'\n%{http_code}' 'https://app.nurtureoutreach.com/mcp' 2>/dev/null)
-  if [ "$?" -ne 0 ]; then
-    printf 'UNKNOWN Nurture key: network or TLS check failed; reconnect and run set me up again\n'
-    return 0
-  fi
-  code=${reply##*$'\n'}; body=${reply%$'\n'*}
-  case "$code" in
-    200)
-      verdict=$(printf '%s' "$body" | LC_ALL=C awk -v keycheck=1 -f "$root/scripts/json.awk" 2>/dev/null)
-      case "$verdict" in
-        accepted) printf 'OK Nurture key: accepted\n' ;;
-        refused) printf 'MISSING Nurture key: refused, create a new one in Nurture\n' ;;
-        permission) printf 'MISSING Nurture key: works but lacks task permission; ask your admin to add list tasks\n' ;;
-        *) printf 'UNKNOWN Nurture key: reply could not be verified; tell your administrator\n' ;;
-      esac ;;
-    401) printf 'MISSING Nurture key: refused, create a new one in Nurture\n' ;;
-    403) printf 'MISSING Nurture key: works but lacks task permission; ask your admin to add list tasks\n' ;;
-    *) printf 'UNKNOWN Nurture key: service did not return a task result; try later and tell your administrator if it continues\n' ;;
-  esac
+  printf 'UNKNOWN Identity: /setup must verify workspace and person live; tools/list is insufficient\n'
+  for file in "$root"/.claude/skills/*/SKILL.md; do
+    [ -f "$file" ] || continue
+    name=${file%/SKILL.md}; name=${name##*/}
+    printf 'COMMAND /%s: %s (%s)\n' "$name" "$state" "$note"
+  done
+  # Semantic coverage belongs to /setup, using live descriptions, not a tool map.
   return 0
 }
 main

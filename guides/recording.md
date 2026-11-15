@@ -1,11 +1,13 @@
-# Record the result
+# Verify and report the result
 
-Use this procedure after every write and every failure in every skill. Before a job, identify its existing task with the person. For a document, use its linked task. If there is none, ask to create an ordinary tracking task with an agreed title and due date through `create_task`, or `/tasks`, **New task**, **Title**, **Due date**, **Create task**. Do not invent a date or create a task without consent. Keep the returned task ID. Include the proposed result comment when asking to confirm the job.
+Reads need no recording and no tracking task. For example, "what's on my plate?" reads the live tasks and answers with the verified coverage. Never post a comment just to record a successful read.
 
-Use `comment_on_task` when listed and permitted, with that ID and `body` starting **Claude Code:**. State the action, document or requirement reference, result, and reason for a failure in plain English. Exclude secrets and identifiable clinical data. A comment can record its own posting; do not create an endless series of comments about comments. A creation comment on the new task records the task's creation as well.
+Before a write, show the exact change and obtain Bela's confirmation. After every write, read back the saved record and say the actual result plainly. A successful write needs no extra result comment. A linking comment requested by /split-task is part of that job.
 
-Read the result back with `get_task`, or reopen the task in Chrome and check the note. Do not retry a write with an unknown outcome until you have checked whether it landed. Record partial success explicitly, for example “Claude Code: The file was uploaded. Linking it to the selected requirement failed because access was refused. The requirement remains incomplete.”
+A failed or partial write must be said plainly and recorded as a comment on the task concerned, or the agreed task if there is none. If no task has been agreed, ask Bela which to use; ask before creating a tracking task and never invent its details. Include the proposed failure comment when asking him to confirm posting it. Discover the live comment capability and schema, or use guides/browser.md if unavailable or refused.
 
-If the comment tool is absent, go to https://app.nurtureoutreach.com/tasks, open the agreed task, select **Notes**, type into **Add a note**, then click **Add note**. Confirm the note appears. If the tool is refused, first explain the refusal, offer these Chrome steps and wait for yes. A refusal does not authorise a different account, key or workspace.
+Start failure comments with `Claude Code:` or `Codex:`. State the attempted change, safe reference, verified partial result and reason for failure. Example: "Claude Code: The file was uploaded. Linking it to the requirement failed because access was refused. The requirement remains incomplete." Read back the saved comment. Do not make comments about comments.
 
-If recording also fails, say “I could not record this result in Nurture” and give the safe reason. Stop. Offer the exact text for the person to add themselves, or, with consent, save it in `my-notes/` as pending. Do not say the job is fully recorded. Setup without an accessible task, an offline failure, or a safety stop can leave recording blocked. Name that limitation and do not keep retrying. Never inspect an unsafe page to reach its note composer.
+Check the saved state before retrying an unknown outcome. Describe it as unconfirmed until verified. If the failure comment cannot be recorded, say "I could not record this failure in Nurture", give the safe reason and stop. Offer the exact text for Bela to add himself or, with consent, save a pending note in my-notes/. Never claim the comment was saved.
+
+Read-only failures are explained plainly, with no tracking-task or comment requirement. Never claim success without a verified result.

@@ -1,15 +1,9 @@
-# Choose the filing fields from Nurture
+# Filing call order
 
-Read the live choices each time. Use listed, permitted `list_document_types` for type IDs and groups, and `get_governance_vocabulary` for governance areas and topic tags. Inspect their current tool schemas. Never substitute the prospect `list_tags` tool for document topics. If either call is refused, explain it, offer the Chrome path below, and wait for the person's yes. A failed step stops the job and follows `guides/recording.md`.
-
-In Chrome, open https://app.nurtureoutreach.com/documents, **Library**, **Upload document**. Its **Group** and **Document type** dropdowns show live document types. Close without uploading after reading choices. An administrator can also read **Settings**, **Document types** at `/settings`. Do not add or edit a type while looking up the vocabulary.
-
-For an existing file, open its title, then **Edit details**. **Group** and **Type** classify the file. **About (team member)** is its subject, selected only when it is about that person. **The day this is about** is its document date when available, rather than an assumed upload date. **Description** explains the file. Read the actual options, including an empty subject when appropriate.
-
-For a file offering **Edit classification**, open that control to read **Governance area** and **Topics**. These topic choices are the document tags. Read any **Appraisal heading** and **Practitioners concerned** choices only if relevant. The current screen offers classification only for supported event and report families. If **Edit classification** is absent, stop the requested area/tag step and explain that this file cannot currently be classified through that screen. Never change the file's type merely to unlock a control. Ask the administrator about the missing capability.
-
-The **Settings**, **Tags** screen manages prospect labels and automation. Those are different from document **Topics** and must never be used as a replacement. Use the Library's classification choices for documents.
-
-Choose the type that describes what the file actually is, the area its evidence supports, and the existing topics that match its content. When two choices fit, ask the person which they intend. Never invent a category, copy a remembered tenant's vocabulary, or create a type or tag unless the person explicitly asks for that separate change. This kit does not make settings changes; hand such a request to the administrator.
-
-Show all proposed fields before saving. Never click the clinical-data checking checkbox or any attestation. If **Save classification** would also submit a checking declaration, let the person complete that save themselves. Do not describe a saved file as checked, accepted or approved unless the human decision is visible. Reopen the file to verify the fields and record the actual outcome on its task.
+1. Confirm the file is safe before reading it. Agree the requested change with Bela. Reads need no tracking task or result comment.
+2. Discover live document types, people and governance vocabulary. Read the relevant schemas. Resolve ambiguous choices with Bela.
+3. Use a live upload capability only if it can transfer the safe local file without putting file bytes into model output or arguments. The supplied byte helper is disabled pending authoritative published request and receipt schemas; use guides/browser.md for local-file upload. Do not reserve an upload for that disabled helper.
+4. Confirm each upload or replacement before making it. Read the saved document and processing result through the live capability or page. Queued means processing remains unverified. Check an unknown outcome before retrying.
+5. Confirm, save and reread the requested type and metadata through the live capability or browser. Preserve values Bela did not ask to change. Use live choices only.
+6. For evidence, read the current audit pack, confirm the exact cycle, named requirement and document, attach through its dedicated capability or browser, then reread that requirement. Follow /complete-audit for audit decisions.
+7. Say each verified write result plainly. Record failed or partial writes on the task concerned, or the agreed task, following guides/recording.md. Upload, metadata, evidence attachment and review are separate results. Stop on a failed or unknown step.
