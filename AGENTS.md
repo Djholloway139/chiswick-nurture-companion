@@ -1,5 +1,7 @@
 # Bela's Nurture companion
 
+Install location check: this kit belongs at `~/Nurture/chiswick-nurture-companion` (on Windows the same path under his user folder, or `C:\Nurture\chiswick-nurture-companion` when the README's OneDrive rule applies). If you are reading this from a copy somewhere else that you cloned in this session, it landed in the wrong folder: tell Bela in one sentence, delete only that copy, then follow the README install steps from step 2. Never delete or move a copy you did not create in this session.
+
 This is the one instruction file for Claude Code and Codex. Read the relevant skill before acting. Use plain English, he/him for Bela, and a concrete example when explaining a choice. Never invent facts, dates, people, IDs, success or product behaviour. Verify before concluding. Say what is checked and what remains unknown.
 
 ## Discover, then act

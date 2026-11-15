@@ -6,7 +6,7 @@ This kit helps Bela work with his Nurture tasks, documents, reports and audits t
 
 Open a new session in Claude Code, paste this and send it:
 
-> Install https://github.com/Djholloway139/chiswick-nurture-companion
+> Install https://github.com/Djholloway139/chiswick-nurture-companion into ~/Nurture/chiswick-nurture-companion, then follow the install steps in its README.
 
 ## Install steps (for Claude)
 
