@@ -15,7 +15,7 @@ case "$(uname -s)" in
       -e 'text returned of (display dialog (item 1 of argv) with title "Nurture key" default answer "" with hidden answer buttons {"Cancel", "Save"} default button "Save" giving up after 600)' \
       -e 'end run' "$message" 2>/dev/null) || { printf 'NOT SAVED: cancelled\n'; exit 1; } ;;
   MINGW*|MSYS*)
-    key=$(powershell.exe -NoProfile -NonInteractive -Command \
+    key=$(powershell.exe -NoProfile -Command \
       '$c = Get-Credential -UserName "Nurture key" -Message $args[0]; if ($c) { [Console]::Out.Write($c.GetNetworkCredential().Password) }' \
       "$message" 2>/dev/null) || { printf 'NOT SAVED: cancelled\n'; exit 1; } ;;
   *) printf 'NOT SAVED: this computer is not supported; ask Dan\n'; exit 1 ;;
