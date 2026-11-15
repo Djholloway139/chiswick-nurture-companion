@@ -8,7 +8,7 @@ From Git Bash on Windows or Terminal on Mac, open this folder and start a new se
 bash scripts/start-codex.sh
 ```
 
-This applies startup updates and creates local hard links before Codex reads skills. If linking fails, the launcher stops. Use a local folder outside OneDrive and network drives on a hard-link-capable volume and ask Dan for help; do not proceed with missing skills. Claude Code itself can continue without these aliases. To resume, use `bash scripts/start-codex.sh resume`; this only checks for updates and prepares links before launching the resumed session. Never apply a startup reset during a resumed job. During a long Codex session, run `bash scripts/update.sh daily` at most once a day. Claude's automatic hooks do not run in Codex.
+This applies startup updates and creates local hard links before Codex reads skills. If linking fails, the launcher stops. Use a local folder outside OneDrive and network drives on a hard-link-capable volume; do not proceed with missing skills. Claude Code itself can continue without these aliases. To resume, use `bash scripts/start-codex.sh resume`; this only checks for updates and prepares links before launching the resumed session. Never apply a startup reset during a resumed job. During a long Codex session, run `bash scripts/update.sh daily` at most once a day. Claude's automatic hooks do not run in Codex.
 
 An IT helper can connect the Nurture server using:
 
