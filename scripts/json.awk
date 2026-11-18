@@ -11,11 +11,18 @@ function str(    c,v,e,i) {
     if(c=="\\") {
       e=substr(s,p++,1)
       if(e=="u") {
+        # Shell command extraction accepts literal text and escaped quotes,
+        # slashes and backslashes. Refuse other escapes rather than alter them.
+        if(mode=="string-at-path") fail()
         for(i=0;i<4;i++) if(substr(s,p+i,1)!~/^[0-9a-fA-F]$/) fail()
         v=v "\\u" substr(s,p,4); p+=4
       } else {
         if(e!~/^["\\\/bfnrt]$/) fail()
-        if(e=="n" || e=="r" || e=="t") v=v " "
+        if(mode=="string-at-path") {
+          if(e!~/^["\\\/]$/) fail()
+          v=v e
+        }
+        else if(e=="n" || e=="r" || e=="t") v=v " "
         else v=v "\\" e
       }
     } else v=v c
@@ -65,6 +72,13 @@ END {
   if(mode=="hook-session" && s ~ /^[ \t\r\n]*$/) { print "fallback"; exit }
   p=1; value("",0); ws()
   if(p<=length(s)) exit 1
+  if(mode=="string-at-path") {
+    if(types[target_path]!="string" || vals[target_path]=="") exit 1
+    print vals[target_path]
+  }
+  if(mode=="object-member") {
+    if(types[""]!="object" || types["/" member]=="") exit 1
+  }
   if(mode=="hook-session") {
     if(types[""]!="object") exit 1
     if(types["/session_id"]=="") print "fallback"

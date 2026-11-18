@@ -4,6 +4,8 @@ Tell Claude exactly which check failed, without including passwords, keys or cli
 
 - **Git missing:** install Git for Windows with Git Bash, or on Mac run `xcode-select --install`. Restart Claude Code.
 - **Key missing or refused:** say **set me up**; Claude opens a private box to paste your own key. Then start a new session. Ask Dan about key access or permissions. Never paste a key into chat.
+- **NOT SAVED: the key box failed:** send Dan that whole status line. It contains the first line of the box failure, without the key. `NOT SAVED: cancelled` means the box was cancelled. If no box appeared on an older release, send Dan the installed version and say that the box never opened.
+- **JSON Parse error ... Unrecognized token:** send Dan the error line, the installed version and the doctor's `header helper` status lines. Release 1.1.1 uses Git's bundled shell so Windows can find Bash. Start a new companion session after the release is installed. Never run the header helper yourself or send its output, because it contains the key.
 - **Wrong workspace or person:** stop before any change and sign in to your own workspace. Discovery alone cannot verify identity.
 - **Chrome missing:** install the official extension in your own Chrome and sign in. In Claude Desktop, open Settings, then Customize, then Connectors. Find Claude in Chrome, choose Configure and turn it on. Then ask Claude to check it can see a safe Nurture page in your signed-in Chrome. If it still fails, tell Dan. Your subscription or organisation may restrict it.
 - **Page discovery unavailable:** open the requested page yourself. Claude must not invent the route.

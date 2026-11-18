@@ -15,7 +15,17 @@ check() {
 has() { printf '%s\n' "$1" | grep -F "$2" >/dev/null; }
 absent() { ! has "$1" "$2"; }
 is() { [ "$1" = "$2" ]; }
-mkdir -p "$scratch/bin" "$scratch/tmp"
+mkdir -p "$scratch/bin" "$scratch/tmp" "$scratch/git-tmp"
+kit="$scratch/doctor kit"
+mkdir -p "$kit/scripts" "$kit/.git/objects" "$kit/.git/refs" "$kit/.claude"
+cp scripts/doctor.sh scripts/transport.sh scripts/key.sh scripts/nurture-headers.sh scripts/json.awk "$kit/scripts/"
+cp .mcp.json "$kit/"
+cp -R .claude/skills "$kit/.claude/"
+printf 'ref: refs/heads/main\n' > "$kit/.git/HEAD"
+export COMPANION_TEST_GIT="$(command -v git)"
+export COMPANION_TEST_ICONV="$(command -v iconv)"
+export TEST_DOCTOR_KIT="$(cd "$kit" && pwd -P)"
+export TEST_HELPER_COMMAND="$(awk -v mode=string-at-path -v target_path=/mcpServers/nurture/headersHelper -f scripts/json.awk .mcp.json)"
 export COMPANION_TEST_DIR="$scratch" TMPDIR="$scratch/tmp"
 export NURTURE_API_KEY='synthetic-test-marker'
 cat > "$scratch/bin/curl" <<'CURL'
@@ -71,6 +81,19 @@ printf '%s\n' "${TEST_OS:-Darwin}"
 UNAME
 cat > "$scratch/bin/git" <<'GIT'
 #!/bin/sh
+if [ "$1" = -c ]; then
+  case "${TEST_HELPER_MODE:-ok}" in
+    fail) printf 'synthetic-test-marker' >&2; exit 1 ;;
+    malformed) printf 'synthetic-test-marker'; exit 0 ;;
+    empty) printf '{}'; exit 0 ;;
+    array) printf '[{"Authorization":"synthetic-test-marker"}]'; exit 0 ;;
+    duplicate) printf '{"Authorization":"synthetic-test-marker","Authorization":"synthetic-test-marker"}'; exit 0 ;;
+    utf16) printf '\377\376{\000"\000A\000u\000t\000h\000o\000r\000i\000z\000a\000t\000i\000o\000n\000"\000:\000"\000s\000"\000}\000'; exit 0 ;;
+  esac
+  # Apple Git may create an xcrun cache. Keep Git's own temporary files apart
+  # from the directory whose doctor request cleanup is checked below.
+  TMPDIR="$COMPANION_TEST_DIR/git-tmp" exec "$COMPANION_TEST_GIT" "$@"
+fi
 [ "$1" != -C ] || shift 2
 case "$1" in
  symbolic-ref) printf 'main\n' ;;
@@ -79,7 +102,43 @@ case "$1" in
  *) exit 96 ;;
 esac
 GIT
-chmod +x "$scratch/bin/curl" "$scratch/bin/claude" "$scratch/bin/uname" "$scratch/bin/git"
+cat > "$scratch/bin/cmd.exe" <<'CMD'
+#!/bin/sh
+[ "$#" -eq 3 ] && [ "$1" = //d ] && [ "$2" = //c ] || exit 91
+[ "$3" = 'C:\synthetic batch folder\headers.cmd' ] || exit 92
+[ "$PWD" = "$TEST_DOCTOR_KIT" ] || exit 93
+batch=$(cat "$COMPANION_TEST_DIR/batch-path") || exit 94
+[ -f "$batch" ] || exit 95
+printf '@echo off\r\n%s\r\n' "$TEST_HELPER_COMMAND" > "$COMPANION_TEST_DIR/expected-batch"
+cmp -s "$COMPANION_TEST_DIR/expected-batch" "$batch" || exit 96
+printf 'matched\n' > "$COMPANION_TEST_DIR/cmd-contract"
+[ "${TEST_CMD_MODE:-ok}" != fail ] || { printf 'synthetic-test-marker' >&2; exit 1; }
+exec /bin/sh -c "$TEST_HELPER_COMMAND"
+CMD
+cat > "$scratch/bin/powershell.exe" <<'POWERSHELL'
+#!/bin/sh
+[ "$#" -eq 3 ] && [ "$1" = -NoProfile ] && [ "$2" = -EncodedCommand ] || exit 91
+case "$3" in ''|*[!A-Za-z0-9+/=]*) exit 92 ;; esac
+decoded=$(printf '%s' "$3" | base64 -d | iconv -f UTF-16LE -t UTF-8) || exit 92
+[ "$decoded" = "$TEST_HELPER_COMMAND" ] || exit 92
+[ "$PWD" = "$TEST_DOCTOR_KIT" ] || exit 93
+printf 'matched\n' > "$COMPANION_TEST_DIR/powershell-contract"
+[ "${TEST_POWERSHELL_MODE:-ok}" != fail ] || { printf 'synthetic-test-marker'; exit 1; }
+exec /bin/sh -c "$decoded"
+POWERSHELL
+cat > "$scratch/bin/cygpath" <<'CYGPATH'
+#!/bin/sh
+[ "$#" -eq 2 ] && [ "$1" = -w ] && [ -f "$2" ] || exit 91
+printf '%s\n' "$2" > "$COMPANION_TEST_DIR/batch-path"
+[ "${TEST_CYGPATH_MODE:-ok}" != fail ] || { printf 'synthetic-test-marker' >&2; exit 1; }
+printf '%s\n' 'C:\synthetic batch folder\headers.cmd'
+CYGPATH
+cat > "$scratch/bin/iconv" <<'ICONV'
+#!/bin/sh
+[ "${TEST_ICONV_MODE:-ok}" != fail ] || { printf 'synthetic-test-marker' >&2; exit 1; }
+exec "$COMPANION_TEST_ICONV" "$@"
+ICONV
+chmod +x "$scratch/bin/curl" "$scratch/bin/claude" "$scratch/bin/uname" "$scratch/bin/git" "$scratch/bin/cmd.exe" "$scratch/bin/powershell.exe" "$scratch/bin/cygpath" "$scratch/bin/iconv"
 export PATH="$scratch/bin:$PATH"
 private() { absent "$output" 'synthetic-test-marker'; }
 cleaned() { [ -z "$(ls -A "$scratch/tmp")" ]; }
@@ -94,11 +153,13 @@ check 'byte helper cannot be bypassed with arguments' is "$rc" 1
 check 'byte helper never discloses the synthetic marker' private
 check 'application payload and receipt field lists removed' sh -c '
  ! grep -E "printf.*\{|mode==\"receipt\"" scripts/upload.sh scripts/json.awk >/dev/null'
-doctor() { bash scripts/doctor.sh; }
+doctor() { bash "$kit/scripts/doctor.sh"; }
 output=$(unset NURTURE_API_KEY; doctor)
 check 'doctor missing key never calls transport' test ! -e "$scratch/calls"
 check 'doctor missing key visible' has "$output" 'MISSING NURTURE_API_KEY:'
+check 'doctor missing helper header is visible' has "$output" 'header helper: stdout is not a JSON object containing Authorization'
 output=$(doctor)
+check 'doctor configured helper passes with synthetic key' has "$output" 'header helper: OK'
 check 'doctor version displayed' has "$output" 'OK Claude Code: 2.1.296'
 check 'doctor uses tools/list only' is "$(cat "$scratch/request")" '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
 check 'doctor does not treat discovery as access proof' has "$output" 'this does not verify key access'
@@ -132,6 +193,45 @@ output=$(TEST_MODE=partial doctor)
 check 'incomplete discovery distinguished' has "$output" 'live schemas received (partial)'
 output=$(TEST_OS=MINGW64_NT-10.0 doctor)
 check 'Git Bash OS recognised' has "$output" 'OK OS: Windows Git Bash'
+check 'doctor cmd helper passes' has "$output" 'header helper (cmd.exe): OK'
+check 'doctor PowerShell helper passes' has "$output" 'header helper (PowerShell): OK'
+check 'doctor batch file holds only echo off and the exact configured command' is "$(cat "$scratch/cmd-contract")" matched
+check 'doctor PowerShell encoded command decodes to the exact configured command' is "$(cat "$scratch/powershell-contract")" matched
+batch_dir=$(dirname "$(cat "$scratch/batch-path")")
+check 'doctor removes the successful batch file and directory' test ! -e "$batch_dir"
+check 'doctor Windows checks keep synthetic key private' private
+for mode in fail malformed empty array duplicate utf16; do
+  output=$(TEST_HELPER_MODE=$mode doctor)
+  check "doctor $mode helper never passes" absent "$output" 'header helper: OK'
+  check "doctor $mode helper gives a safe reason" has "$output" 'header helper:'
+  check "doctor $mode helper output stays private" private
+done
+output=$(TEST_OS=MINGW64_NT-10.0 TEST_CMD_MODE=fail TEST_POWERSHELL_MODE=fail doctor)
+check 'doctor cmd failure has a safe reason' has "$output" 'header helper (cmd.exe): command failed'
+check 'doctor PowerShell failure has a safe reason' has "$output" 'header helper (PowerShell): command failed'
+check 'doctor failed Windows checks keep output private' private
+batch_dir=$(dirname "$(cat "$scratch/batch-path")")
+check 'doctor removes the failed batch file and directory' test ! -e "$batch_dir"
+output=$(TEST_OS=MINGW64_NT-10.0 TEST_CYGPATH_MODE=fail doctor)
+check 'doctor path conversion failure has a safe reason' has "$output" 'header helper (cmd.exe): could not convert the batch file path to Windows form'
+check 'doctor path conversion stderr stays private' private
+batch_dir=$(dirname "$(cat "$scratch/batch-path")")
+check 'doctor removes batch directory after path conversion failure' test ! -e "$batch_dir"
+output=$(TEST_OS=MINGW64_NT-10.0 TEST_ICONV_MODE=fail doctor)
+check 'doctor encoding failure has a safe reason' has "$output" 'header helper (PowerShell): could not encode the PowerShell command'
+check 'doctor encoding stderr stays private' private
+# Change the fixture config to prove doctor does not keep a second command.
+printf '%s\n' '{"mcpServers":{"nurture":{"headersHelper":"exit 7 # %"}}}' > "$kit/.mcp.json"
+rm "$scratch/cmd-contract"
+output=$(TEST_OS=MINGW64_NT-10.0 doctor)
+check 'doctor refuses percent expansion in batch commands' has "$output" 'header helper (cmd.exe): helper command contains %; batch check refused'
+check 'doctor never runs cmd for a percent command' test ! -e "$scratch/cmd-contract"
+printf '%s\n' '{"mcpServers":{"nurture":{"headersHelper":"exit 7"}}}' > "$kit/.mcp.json"
+output=$(doctor)
+check 'doctor executes command read from changed config' has "$output" 'header helper: command failed'
+printf '{synthetic-malformed}\n' > "$kit/.mcp.json"
+output=$(doctor)
+check 'doctor malformed config fails safely' has "$output" 'header helper: cannot read the command from .mcp.json'
 check 'doctor failure cleanup' cleaned
 unset NURTURE_API_KEY
 printf 'RESULT %s passed, %s failed\n' "$passed" "$failed"

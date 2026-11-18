@@ -1,5 +1,11 @@
 # Changes
 
+## 1.1.1
+
+- Fixed the private key box on Windows. Cancelling the box and a box failure now give different messages, with a safe failure line to send Dan.
+- The Nurture connection now uses Git's own shell to find Bash on Windows, without changing Windows settings or PATH.
+- The doctor checks the connection's header command without displaying the key. On Windows it also checks Command Prompt and PowerShell.
+
 ## 1.1.0
 
 - Install is now one message: paste the repo link and say install. The README holds the steps for Claude.

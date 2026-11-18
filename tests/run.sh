@@ -84,6 +84,96 @@ check 'read-only jobs do not require comments' sh -c '
   grep -F "Reads need no recording and no tracking task" guides/recording.md >/dev/null &&
   grep -F "A successful write needs no extra result comment" guides/recording.md >/dev/null &&
   ! grep -E "Before a job, agree|without a recorded, verified result|and result comment|and the tracking comment" AGENTS.md .claude/skills/*/SKILL.md guides/*.md'
+# Windows key box tests use only a scratch kit and a synthetic password.
+keykit="$scratch/key kit"
+mkdir -p "$keykit/scripts" "$scratch/keybin"
+cp scripts/save-key.sh scripts/key.sh scripts/nurture-headers.sh scripts/json.awk "$keykit/scripts/"
+cp .mcp.json "$keykit/"
+cat > "$scratch/keybin/uname" <<'UNAME'
+#!/bin/sh
+printf '%s\n' "${TEST_KEY_OS:-MINGW64_NT-10.0}"
+UNAME
+cat > "$scratch/keybin/powershell.exe" <<'POWERSHELL'
+#!/bin/sh
+[ "$#" -eq 3 ] && [ "$1" = -NoProfile ] && [ "$2" = -EncodedCommand ] || exit 90
+[ "${NURTURE_KEY_PROMPT:-}" = 'Paste your Nurture key, then click Save. Claude cannot see what you type here.' ] || exit 91
+case "$3" in ''|*[!A-Za-z0-9+/=]*) exit 94 ;; esac
+decoded=$(printf '%s' "$3" | base64 -d | iconv -f UTF-16LE -t UTF-8) || exit 94
+[ "$(printf '%s\n' "$decoded" | wc -l | tr -d ' ')" = 1 ] || exit 95
+case "$decoded" in *'$env:NURTURE_KEY_PROMPT'*) ;; *) exit 92 ;; esac
+case "$decoded" in *'$args'*|*-NonInteractive*) exit 93 ;; esac
+printf 'matched\n' > "$TEST_KEY_KIT/prompt-contract"
+case "${TEST_KEY_MODE:-saved}" in
+  saved) printf 'synthetic-popup-marker'; exit 0 ;;
+  cancel) exit 3 ;;
+  error) printf 'Synthetic box failure.\r\nSynthetic detail to omit.'; exit 2 ;;
+  launch) printf 'synthetic-popup-marker'; printf 'synthetic-popup-marker' >&2; exit 127 ;;
+esac
+POWERSHELL
+cat > "$scratch/keybin/osascript" <<'OSASCRIPT'
+#!/bin/sh
+[ "$#" -eq 9 ] || exit 90
+for last do :; done
+[ "$last" = 'Paste your Nurture key, then click Save. Claude cannot see what you type here.' ] || exit 91
+[ "${TEST_KEY_MODE:-saved}" != cancel ] || exit 1
+printf 'synthetic-popup-marker'
+OSASCRIPT
+chmod +x "$scratch/keybin/uname" "$scratch/keybin/powershell.exe" "$scratch/keybin/osascript"
+export TEST_KEY_KIT="$keykit"
+key_bash=$(command -v bash)
+keybox() { PATH="${TEST_KEY_PATH:-$scratch/keybin:$PATH}" "$key_bash" "$keykit/scripts/save-key.sh"; }
+output=$(keybox); rc=$?
+check 'Windows prompt succeeds through the environment message contract' is "$rc" 0
+check 'Windows prompt decodes to one line with no positional message or NonInteractive' is "$(cat "$keykit/prompt-contract")" matched
+check 'saved prompt reports only status' is "$output" 'SAVED: key stored in this folder only'
+check 'saved prompt stores only the synthetic key in scratch' is "$(cat "$keykit/.env")" 'NURTURE_API_KEY=synthetic-popup-marker'
+output=$(TEST_KEY_MODE=cancel keybox); rc=$?
+check 'real prompt cancellation fails without saving' is "$rc" 1
+check 'real prompt cancellation has its own message' is "$output" 'NOT SAVED: cancelled'
+output=$(TEST_KEY_MODE=error keybox); rc=$?
+check 'prompt error fails without saving' is "$rc" 1
+check 'prompt error reports only its first line' is "$output" 'NOT SAVED: the key box failed: Synthetic box failure.; send this line to Dan'
+output=$(TEST_KEY_MODE=launch keybox 2>&1); rc=$?
+check 'unknown PowerShell failure fails without saving' is "$rc" 1
+check 'unknown PowerShell failure is distinct from cancel' has "$output" 'NOT SAVED: the key box failed:'
+check 'unknown PowerShell stdout and stderr remain private' absent "$output" synthetic-popup-marker
+for missing in iconv base64; do
+  toolbin="$scratch/missing-$missing"
+  mkdir -p "$toolbin"
+  cp "$scratch/keybin/uname" "$toolbin/"
+  ln -s "$(command -v dirname)" "$toolbin/dirname"
+  case "$missing" in iconv) other=base64 ;; base64) other=iconv ;; esac
+  ln -s "$(command -v "$other")" "$toolbin/$other"
+  output=$(TEST_KEY_PATH="$toolbin" keybox 2>&1); rc=$?
+  check "missing $missing stops the key box" is "$rc" 1
+  check "missing $missing gives the required safe message" is "$output" 'NOT SAVED: the key box failed: Git Bash tools missing; send this line to Dan'
+done
+check 'cancel and failures preserve the previous synthetic key' is "$(cat "$keykit/.env")" 'NURTURE_API_KEY=synthetic-popup-marker'
+output=$(TEST_KEY_OS=Darwin keybox); rc=$?
+check 'Mac prompt still saves' is "$rc" 0
+output=$(TEST_KEY_OS=Darwin TEST_KEY_MODE=cancel keybox); rc=$?
+check 'Mac cancellation message is unchanged' is "$output" 'NOT SAVED: cancelled'
+# A minimal repository fixture allows real read-only Git aliases without init.
+mkdir -p "$keykit/.git/objects" "$keykit/.git/refs"
+printf 'ref: refs/heads/main\n' > "$keykit/.git/HEAD"
+helper_command=$(awk -v mode=string-at-path -v target_path=/mcpServers/nurture/headersHelper -f scripts/json.awk .mcp.json)
+check 'MCP config is strict JSON' awk -f scripts/json.awk .mcp.json
+check 'header command extraction decodes JSON quotes' is "$helper_command" 'git -c "alias.nurture-headers=!bash scripts/nurture-headers.sh" nurture-headers'
+helper_started=$(date +%s)
+helper_output=$(cd "$keykit" && /bin/sh -c "$helper_command" 2>"$scratch/helper-stderr"); rc=$?
+helper_elapsed=$(($(date +%s)-helper_started))
+check 'configured helper runs via sh in scratch project' is "$rc" 0
+check 'configured helper yields an Authorization JSON object' sh -c '
+  printf "%s" "$1" | awk -v mode=object-member -v member=Authorization -f scripts/json.awk' sh "$helper_output"
+check 'configured helper reads the synthetic scratch key' is "$helper_output" '{"Authorization":"Bearer synthetic-popup-marker"}'
+check 'configured helper produces no stderr' test ! -s "$scratch/helper-stderr"
+check 'configured helper finishes inside ten seconds' test "$helper_elapsed" -lt 10
+helper_output=$(cd "$keykit/scripts" && /bin/sh -c "$helper_command" 2>/dev/null)
+check 'Git alias runs from repository top level' is "$helper_output" '{"Authorization":"Bearer synthetic-popup-marker"}'
+rm "$keykit/.env"
+helper_output=$(cd "$keykit" && /bin/sh -c "$helper_command" 2>/dev/null)
+check 'configured helper with no scratch key yields empty object' is "$helper_output" '{}'
+unset TEST_KEY_KIT
 # Link tests run against a path containing spaces and a simulated checkout replacement.
 mkdir -p "$scratch/kit space/scripts" "$scratch/kit space/.claude/skills/demo"
 cp scripts/sync-skills.sh "$scratch/kit space/scripts/"
